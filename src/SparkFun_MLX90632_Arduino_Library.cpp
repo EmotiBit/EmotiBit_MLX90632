@@ -193,45 +193,47 @@ boolean MLX90632::begin(uint8_t deviceAddress, TwoWire &wirePort, status &return
 //Read all calibration values and calculate the temperature of the thing we are looking at
 //Depending on mode, initiates a measurement
 //If in sleep or step mode, clears the new_data bit, sets the SOC bit
-float MLX90632::getObjectTemp()
+float MLX90632::start_getObjectTemp()
 {
   MLX90632::status returnError;
-  return (getObjectTemp(returnError));
+  return (start_getObjectTemp(returnError));
 }
-float MLX90632::getObjectTemp(status& returnError)
+float MLX90632::start_getObjectTemp(status& returnError)
 {
-  returnError = SENSOR_SUCCESS;
+	returnError = SENSOR_SUCCESS;
 
-  //If the sensor is not in continuous mode then the tell sensor to take reading
-  if(getMode() != MODE_CONTINUOUS) setSOC();
+	//If the sensor is not in continuous mode then the tell sensor to take reading
+	if (getMode() != MODE_CONTINUOUS) setSOC();
 
-  //Write new_data = 0
-  clearNewData();
+	//Write new_data = 0
+	clearNewData();
 
-  //Check when new_data = 1
-  uint16_t counter = 0;
-  while (dataAvailable() == false)
-  {
-    delay(1);
-    counter++;
-    if (counter == MAX_WAIT)
-    {
-      if (_printDebug) _debugPort->println(F("Data available timeout"));
-      returnError = SENSOR_TIMEOUT_ERROR;
-      return (0.0); //Error
-    }
-  }
+	//Check when new_data = 1
+	//uint16_t counter = 0;
+	//while (dataAvailable() == false)
+	//{
+	//  delay(1);
+	//  counter++;
+	//  if (counter == MAX_WAIT)
+	//  {
+	//    if (_printDebug) _debugPort->println(F("Data available timeout"));
+	//    returnError = SENSOR_TIMEOUT_ERROR;
+	//    return (0.0); //Error
+	//  }
+	//}
 
+	// gatherSensorTemp(returnError);
+	//
+	return (0.0);
+}
+
+float MLX90632::end_getObjectTemp() {
+	MLX90632::status returnError;
+	return (end_getObjectTemp(returnError));
+}
+
+float MLX90632::end_getObjectTemp(status& returnError){
   gatherSensorTemp(returnError);
-  if (returnError != SENSOR_SUCCESS)
-  {
-    if (_printDebug)
-    {
-      _debugPort->println(F("Sensor temperature not found"));
-      if(returnError == SENSOR_TIMEOUT_ERROR) _debugPort->println(F("Timeout"));
-    }
-    return (0.0); //Error
-  }
 
   int16_t lowerRAM = 0;
   int16_t upperRAM = 0;
@@ -324,9 +326,10 @@ float MLX90632::getObjectTemp(status& returnError)
 }
 
 //Convert temp to F
+// Broken because of making the call ASYNC
 float MLX90632::getObjectTempF()
 {
-  float tempC = getObjectTemp();
+  float tempC = start_getObjectTemp();
   float tempF = tempC * 9.0/5.0 + 32.0;
   return(tempF);
 }
