@@ -186,7 +186,7 @@ boolean MLX90632::begin(uint8_t deviceAddress, TwoWire &wirePort, status &return
   }
 
   //Note, sensor is in sleep mode
-
+  setMode(MODE_STEP);
   return (true);
 }
 
