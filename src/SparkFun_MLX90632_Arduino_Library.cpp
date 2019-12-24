@@ -185,7 +185,6 @@ boolean MLX90632::begin(uint8_t deviceAddress, TwoWire &wirePort, status &return
     _debugPort->println(F("MLX90632 online"));
   }
 
-  //Note, sensor is in sleep mode
   setMode(MODE_STEP);
   return (true);
 }
@@ -634,7 +633,9 @@ void MLX90632::writeEEPROM(uint16_t addr, uint16_t val)
 {
   //Put device into halt mode (page 15)
   uint8_t originalMode = getMode();
-  setMode(MODE_SLEEP);
+
+  // SENSOR HAS TO BE IN step MODE TO WRITE INTO THE EEPROM
+  setMode(MODE_STEP);
 
   //Wait for complete
   while (deviceBusy()) delay(1);
@@ -672,3 +673,80 @@ void MLX90632::writeEEPROM(uint16_t addr, uint16_t val)
   setMode(originalMode);
 }
 
+void MLX90632::setMeasurementRate(uint8_t rate) {
+	uint16_t read_meas1, read_meas2;
+	setMode(MODE_STEP);
+	readRegister16(EE_MEAS1, read_meas1);
+	readRegister16(EE_MEAS2, read_meas2);
+	if (rate == 0) {
+		if (read_meas1 != 0x800D) {
+			writeEEPROM(EE_MEAS1, 0x800D);
+		}
+		if (read_meas2 != 0x801D) {
+			writeEEPROM(EE_MEAS2, 0x801D);
+		}
+	}
+	else if (rate == 1) {
+		if (read_meas1 != 0x810D) {
+			writeEEPROM(EE_MEAS1, 0x810D);
+		}
+		if (read_meas2 != 0x811D) {
+			writeEEPROM(EE_MEAS2, 0x811D);
+		}
+	}
+	else if (rate == 2) {
+		if (read_meas1 != 0x820D) {
+			writeEEPROM(EE_MEAS1, 0x820D);
+		}
+		if (read_meas2 != 0x821D) {
+			writeEEPROM(EE_MEAS2, 0x821D);
+		}
+	}
+	else if (rate == 4) {
+		if (read_meas1 != 0x830D) {
+			writeEEPROM(EE_MEAS1, 0x830D);
+		}
+		if (read_meas2 != 0x831D) {
+			writeEEPROM(EE_MEAS2, 0x831D);
+		}
+	}
+	else if (rate == 8) {
+		if (read_meas1 != 0x840D) {
+			writeEEPROM(EE_MEAS1, 0x840D);
+		}
+		if (read_meas2 != 0x841D) {
+			writeEEPROM(EE_MEAS2, 0x841D);
+		}
+	}
+	else if (rate == 16) {
+		if (read_meas1 != 0x850D) {
+			writeEEPROM(EE_MEAS1, 0x850D);
+		}
+		if (read_meas2 != 0x851D) {
+			writeEEPROM(EE_MEAS2, 0x851D);
+		}
+	}
+	else if (rate == 32) {
+		if (read_meas1 != 0x860D) {
+			writeEEPROM(EE_MEAS1, 0x860D);
+		}
+		if (read_meas2 != 0x861D) {
+			writeEEPROM(EE_MEAS2, 0x861D);
+		}
+	}
+	else if (rate == 64) {
+		if (read_meas1 != 0x870D) {
+			writeEEPROM(EE_MEAS1, 0x870D);
+		}
+		if (read_meas2 != 0x871D) {
+			writeEEPROM(EE_MEAS2, 0x871D);
+		}
+	}
+	readRegister16(EE_MEAS1, read_meas1);
+	readRegister16(EE_MEAS2, read_meas2);
+	Serial.println("Updated Register contents");
+	Serial.print("EE_MEAS1:");
+	Serial.println(read_meas1, HEX);
+	Serial.print("EE_MEAS2:");
+	Serial.println(read_meas2, HEX);
+}
