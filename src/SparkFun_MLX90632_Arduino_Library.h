@@ -74,6 +74,9 @@
 #define REG_CONTROL 0x3001
 #define REG_STATUS 0x3FFF
 
+// Refresh Rate
+#define EE_MEAS1 0x24E1
+#define EE_MEAS2 0x24E2
 //User RAM
 #define RAM_1 0x4000
 #define RAM_2 0x4001
@@ -131,13 +134,16 @@ class MLX90632 {
 
     void writeEEPROM(uint16_t addr, uint16_t val);
     void writeI2CAddress(uint8_t newAddress);
+	void setMeasurementRate(uint8_t rate = 2);
 
     void enableDebugging(Stream &debugPort = Serial); //Turn on debug printing. If user doesn't specify then Serial will be used.
     void disableDebugging(); //Turn off debug printing
 
-    float getObjectTemp();
-    float getObjectTemp(status &returnError);
-    float getObjectTempF();
+    float start_getObjectTemp();
+    float start_getObjectTemp(status &returnError);
+	float end_getObjectTemp();
+	float end_getObjectTemp(status &returnError);
+	float getObjectTempF();
     float getSensorTemp();
     float getSensorTemp(status &returnError);
 
