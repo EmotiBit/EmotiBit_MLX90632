@@ -206,23 +206,6 @@ float MLX90632::start_getObjectTemp(status& returnError)
 
 	//Write new_data = 0
 	clearNewData();
-
-	//Check when new_data = 1
-	//uint16_t counter = 0;
-	//while (dataAvailable() == false)
-	//{
-	//  delay(1);
-	//  counter++;
-	//  if (counter == MAX_WAIT)
-	//  {
-	//    if (_printDebug) _debugPort->println(F("Data available timeout"));
-	//    returnError = SENSOR_TIMEOUT_ERROR;
-	//    return (0.0); //Error
-	//  }
-	//}
-
-	// gatherSensorTemp(returnError);
-	//
 	return (0.0);
 }
 
@@ -629,6 +612,8 @@ MLX90632::status MLX90632::writeRegister16(uint16_t addr, uint16_t val)
 //The datasheet doesn't go a good job of explaining how writing to EEPROM works.
 //This should work but doesn't. It seems the IC is very sensitive to I2C traffic while
 //the sensor is recording the new EEPROM.
+
+//UPDATE: The sensor should be in STEP_MODE before data can be written into the EEPROM
 void MLX90632::writeEEPROM(uint16_t addr, uint16_t val)
 {
   //Put device into halt mode (page 15)
@@ -652,8 +637,6 @@ void MLX90632::writeEEPROM(uint16_t addr, uint16_t val)
 
   //Wait for complete
   delay(100);
-  //while (eepromBusy()) delay(1);
-  //while (deviceBusy()) delay(1);
 
   //Magic unlock again
   writeRegister16(0x3005, 0x554C);
@@ -666,8 +649,6 @@ void MLX90632::writeEEPROM(uint16_t addr, uint16_t val)
 
   //Wait for complete
   delay(100);
-  //while (eepromBusy()) delay(1);
-  //while (deviceBusy()) delay(1);
 
   //Return to original mode
   setMode(originalMode);
@@ -678,7 +659,7 @@ void MLX90632::setMeasurementRate(uint8_t rate) {
 	setMode(MODE_STEP);
 	readRegister16(EE_MEAS1, read_meas1);
 	readRegister16(EE_MEAS2, read_meas2);
-	if (rate == 0) {
+	if (rate == 0) {// for 0.5Hz Sampling
 		if (read_meas1 != 0x800D) {
 			writeEEPROM(EE_MEAS1, 0x800D);
 		}
