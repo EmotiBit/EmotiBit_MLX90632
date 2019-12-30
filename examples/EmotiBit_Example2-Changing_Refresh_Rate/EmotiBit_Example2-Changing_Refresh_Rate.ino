@@ -1,7 +1,7 @@
 #include <Wire.h>
 #include "wiring_private.h"
-
 #include "SparkFun_MLX90632_Arduino_Library.h"
+#define MOSFET 6
 MLX90632 myTempSensor;
 
 TwoWire myWire(&sercom1, 11, 13);
@@ -9,6 +9,9 @@ TwoWire myWire(&sercom1, 11, 13);
 void setup(){
 	Serial.begin(9600);
 	Serial.println("MLX90632 Read Example");
+	// Enable MOSFET
+	pinMode(MOSFET, OUTPUT);
+	digitalWrite(MOSFET, LOW);
 	myWire.begin();
 	pinPeripheral(11, PIO_SERCOM);
 	pinPeripheral(13, PIO_SERCOM);
