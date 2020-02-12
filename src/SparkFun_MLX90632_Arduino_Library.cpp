@@ -202,7 +202,10 @@ float MLX90632::start_getObjectTemp(status& returnError)
 	returnError = SENSOR_SUCCESS;
 
 	//If the sensor is not in continuous mode then the tell sensor to take reading
-	if (getMode() != MODE_CONTINUOUS) setSOC();
+	if (getMode() != MODE_CONTINUOUS)
+	{
+		setSOC();
+	}
 
 	//Write new_data = 0
 	clearNewData();
@@ -215,7 +218,21 @@ float MLX90632::end_getObjectTemp() {
 }
 
 float MLX90632::end_getObjectTemp(status& returnError){
-  gatherSensorTemp(returnError);
+	// Removed following because it doens't seem to do anything
+  //gatherSensorTemp(returnError);
+
+	uint16_t status = getStatus(returnError);
+	bool newData = status & ((uint16_t)1 << BIT_NEW_DATA);
+
+	if (!newData)
+	{
+		// Don't bother recalculating TO0 if there's no new data
+		returnError = SENSOR_NO_NEW_DATA; 
+		return TO0;
+	}
+
+	//Read cycle_pos to get measurement pointer
+	int cyclePosition = status >> BIT_CYCLE_POS; //Shave off last two bits
 
   int16_t lowerRAM = 0;
   int16_t upperRAM = 0;
@@ -225,9 +242,6 @@ float MLX90632::end_getObjectTemp(status& returnError){
   readRegister16(RAM_6, (uint16_t&)sixRAM);
   int16_t nineRAM;
   readRegister16(RAM_9, (uint16_t&)nineRAM);
-
-  //Read cycle_pos to get measurement pointer
-  int cyclePosition = getCyclePosition();
 
   //If cycle_pos = 1
   //Calculate TA and TO based on RAM_4, RAM_5, RAM_6, RAM_9
@@ -257,7 +271,8 @@ float MLX90632::end_getObjectTemp(status& returnError){
 
     double AMB = (sixRAM / 12.0) / VRta * pow(2, 19);
 
-    double sensorTemp = P_O + (AMB - P_R) / P_G + P_T * pow((AMB - P_R), 2);
+		// Removed following because it doens't seem to do anything
+    //double sensorTemp = P_O + (AMB - P_R) / P_G + P_T * pow((AMB - P_R), 2);
 
     float S = (float)(lowerRAM + upperRAM) / 2.0;
     double VRto = nineRAM + Ka * (sixRAM / 12.0);
@@ -309,9 +324,20 @@ float MLX90632::end_getObjectTemp(status& returnError){
 
 //Convert temp to F
 // Broken because of making the call ASYNC
+// ToDo: fix for async usage
 float MLX90632::getObjectTempF()
 {
   float tempC = start_getObjectTemp();
+	MLX90632::status myStatus;
+	myStatus = MLX90632::status::SENSOR_NO_NEW_DATA;
+	digitalWrite(10, HIGH);
+	while (myStatus != MLX90632::status::SENSOR_SUCCESS)
+	{
+		digitalWrite(16, HIGH);
+		objectTemp = myTempSensor.end_getObjectTemp(myStatus); //Get the temperature of the object we're looking at in C
+		digitalWrite(16, LOW);
+	}
+
   float tempF = tempC * 9.0/5.0 + 32.0;
   return(tempF);
 }
