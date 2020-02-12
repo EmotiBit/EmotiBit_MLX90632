@@ -140,8 +140,8 @@ class MLX90632 {
     void enableDebugging(Stream &debugPort = Serial); //Turn on debug printing. If user doesn't specify then Serial will be used.
     void disableDebugging(); //Turn off debug printing
 
-    float start_getObjectTemp();
-    float start_getObjectTemp(status &returnError);
+    bool start_getObjectTemp();
+    bool start_getObjectTemp(status &returnError);
 	float end_getObjectTemp();
 	float end_getObjectTemp(status &returnError);
 	float getObjectTempF();
@@ -167,6 +167,7 @@ class MLX90632 {
 
   private:
 
+		uint8_t _refreshRate = 2;
     float gatherSensorTemp(status &returnError);
 
     //Variables

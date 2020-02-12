@@ -192,24 +192,24 @@ boolean MLX90632::begin(uint8_t deviceAddress, TwoWire &wirePort, status &return
 //Read all calibration values and calculate the temperature of the thing we are looking at
 //Depending on mode, initiates a measurement
 //If in sleep or step mode, clears the new_data bit, sets the SOC bit
-float MLX90632::start_getObjectTemp()
+bool MLX90632::start_getObjectTemp()
 {
   MLX90632::status returnError;
   return (start_getObjectTemp(returnError));
 }
-float MLX90632::start_getObjectTemp(status& returnError)
+bool MLX90632::start_getObjectTemp(status& returnError)
 {
 	returnError = SENSOR_SUCCESS;
 
 	//If the sensor is not in continuous mode then the tell sensor to take reading
 	if (getMode() != MODE_CONTINUOUS)
 	{
-		setSOC();
+		returnError = setSOC();
 	}
 
 	//Write new_data = 0
 	clearNewData();
-	return (0.0);
+	return (returnError == SENSOR_SUCCESS);
 }
 
 float MLX90632::end_getObjectTemp() {
@@ -220,6 +220,7 @@ float MLX90632::end_getObjectTemp() {
 float MLX90632::end_getObjectTemp(status& returnError){
 	// Removed following because it doens't seem to do anything
   //gatherSensorTemp(returnError);
+
 
 	uint16_t status = getStatus(returnError);
 	bool newData = status & ((uint16_t)1 << BIT_NEW_DATA);
@@ -317,29 +318,44 @@ float MLX90632::end_getObjectTemp(status& returnError){
       _debugPort->print(F(": "));
       _debugPort->println(objectTemp, 7);
     }
+
   }
 
   return (TO0);
 }
 
 //Convert temp to F
-// Broken because of making the call ASYNC
-// ToDo: fix for async usage
 float MLX90632::getObjectTempF()
 {
-  float tempC = start_getObjectTemp();
-	MLX90632::status myStatus;
-	myStatus = MLX90632::status::SENSOR_NO_NEW_DATA;
-	digitalWrite(10, HIGH);
-	while (myStatus != MLX90632::status::SENSOR_SUCCESS)
+	if (start_getObjectTemp())
 	{
-		digitalWrite(16, HIGH);
-		objectTemp = myTempSensor.end_getObjectTemp(myStatus); //Get the temperature of the object we're looking at in C
-		digitalWrite(16, LOW);
-	}
+		float tempC;
 
-  float tempF = tempC * 9.0/5.0 + 32.0;
-  return(tempF);
+		// Add a delay corresponding to refresh rate per the datasheet
+		//delay(1000.f / (float) (_refreshRate == 0 ? 0.5f : _refreshRate));
+
+		MLX90632::status myStatus;
+		myStatus = MLX90632::status::SENSOR_NO_NEW_DATA;
+		while (true)
+		{
+			tempC = end_getObjectTemp(myStatus); //Get the temperature of the object we're looking at in C
+			if (myStatus == MLX90632::status::SENSOR_SUCCESS)
+			{
+				break;
+			}
+			else
+			{
+				delay(1);
+			}
+		}
+
+		float tempF = tempC * 9.0/5.0 + 32.0;
+		return(tempF);
+	}
+	else
+	{
+		return 0.0f;
+	}
 }
 
 //Returns the current temperature of the sensor
@@ -453,6 +469,7 @@ void MLX90632::setBrownOut()
 //Clear the new_data bit. This is done after a measurement is complete
 void MLX90632::clearNewData()
 {
+	// ToDo: Add status check/return
   uint16_t reg = getStatus(); //Get current bits
   reg &= ~(1 << BIT_NEW_DATA); //Clear the bit
   writeRegister16(REG_STATUS, reg); //Set the mode bits
@@ -751,9 +768,15 @@ void MLX90632::setMeasurementRate(uint8_t rate) {
 	}
 	readRegister16(EE_MEAS1, read_meas1);
 	readRegister16(EE_MEAS2, read_meas2);
+
+	// ToDo: Perform check to see whether rate was changed
+	_refreshRate = rate;
+
 	Serial.println("Updated Register contents");
-	Serial.print("EE_MEAS1:");
+	Serial.print("EE_MEAS1: ");
 	Serial.println(read_meas1, HEX);
-	Serial.print("EE_MEAS2:");
+	Serial.print("EE_MEAS2: ");
 	Serial.println(read_meas2, HEX);
+	Serial.print("Refresh Rate: ");
+	Serial.println(_refreshRate);
 }
