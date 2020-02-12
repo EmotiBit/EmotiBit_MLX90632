@@ -265,27 +265,38 @@ float MLX90632::end_getObjectTemp(status& returnError){
     readRegister16(RAM_5, (uint16_t&)upperRAM);
   }
 
+	double VRta;
+	double AMB;
+	double VRto;
+	double Sto;
+	double TAdut;
+	double ambientTempK;
+	double bigFraction;
+	double objectTemp;
+
   //Object temp requires 3 iterations
   for (uint8_t i = 0 ; i < 3 ; i++)
   {
-    double VRta = nineRAM + Gb * (sixRAM / 12.0);
+		// ToDo: Optimize this section to reduce CPU load / delay
 
-    double AMB = (sixRAM / 12.0) / VRta * pow(2, 19);
+    VRta = nineRAM + Gb * (sixRAM / 12.0);
+
+    AMB = (sixRAM / 12.0) / VRta * pow(2, 19);
 
 		// Removed following because it doens't seem to do anything
     //double sensorTemp = P_O + (AMB - P_R) / P_G + P_T * pow((AMB - P_R), 2);
 
     float S = (float)(lowerRAM + upperRAM) / 2.0;
-    double VRto = nineRAM + Ka * (sixRAM / 12.0);
-    double Sto = (S / 12.0) / VRto * (double)pow(2, 19);
+    VRto = nineRAM + Ka * (sixRAM / 12.0);
+    Sto = (S / 12.0) / VRto * (double)pow(2, 19);
 
-    double TAdut = (AMB - Eb) / Ea + 25.0;
+    TAdut = (AMB - Eb) / Ea + 25.0;
 
-    double ambientTempK = TAdut + 273.15;
+    ambientTempK = TAdut + 273.15;
 
-    double bigFraction = Sto / (1 * Fa * Ha * (1 + Ga * (TOdut - TO0) + Fb * (TAdut - TA0)));
+    bigFraction = Sto / (1 * Fa * Ha * (1 + Ga * (TOdut - TO0) + Fb * (TAdut - TA0)));
 
-    double objectTemp = bigFraction + pow(ambientTempK, 4);
+    objectTemp = bigFraction + pow(ambientTempK, 4);
     objectTemp = pow(objectTemp, 0.25); //Take 4th root
     objectTemp = objectTemp - 273.15 - Hb;
 
@@ -320,7 +331,6 @@ float MLX90632::end_getObjectTemp(status& returnError){
     }
 
   }
-
   return (TO0);
 }
 
