@@ -192,21 +192,24 @@ boolean MLX90632::begin(uint8_t deviceAddress, TwoWire &wirePort, status &return
 //Read all calibration values and calculate the temperature of the thing we are looking at
 //Depending on mode, initiates a measurement
 //If in sleep or step mode, clears the new_data bit, sets the SOC bit
-float MLX90632::start_getObjectTemp()
+bool MLX90632::start_getObjectTemp()
 {
   MLX90632::status returnError;
   return (start_getObjectTemp(returnError));
 }
-float MLX90632::start_getObjectTemp(status& returnError)
+bool MLX90632::start_getObjectTemp(status& returnError)
 {
 	returnError = SENSOR_SUCCESS;
 
 	//If the sensor is not in continuous mode then the tell sensor to take reading
-	if (getMode() != MODE_CONTINUOUS) setSOC();
+	if (getMode() != MODE_CONTINUOUS)
+	{
+		returnError = setSOC();
+	}
 
 	//Write new_data = 0
 	clearNewData();
-	return (0.0);
+	return (returnError == SENSOR_SUCCESS);
 }
 
 float MLX90632::end_getObjectTemp() {
@@ -215,7 +218,22 @@ float MLX90632::end_getObjectTemp() {
 }
 
 float MLX90632::end_getObjectTemp(status& returnError){
-  gatherSensorTemp(returnError);
+	// Removed following because it doens't seem to do anything
+  //gatherSensorTemp(returnError);
+
+
+	uint16_t status = getStatus(returnError);
+	bool newData = status & ((uint16_t)1 << BIT_NEW_DATA);
+
+	if (!newData)
+	{
+		// Don't bother recalculating TO0 if there's no new data
+		returnError = SENSOR_NO_NEW_DATA; 
+		return TO0;
+	}
+
+	//Read cycle_pos to get measurement pointer
+	int cyclePosition = status >> BIT_CYCLE_POS; //Shave off last two bits
 
   int16_t lowerRAM = 0;
   int16_t upperRAM = 0;
@@ -225,9 +243,6 @@ float MLX90632::end_getObjectTemp(status& returnError){
   readRegister16(RAM_6, (uint16_t&)sixRAM);
   int16_t nineRAM;
   readRegister16(RAM_9, (uint16_t&)nineRAM);
-
-  //Read cycle_pos to get measurement pointer
-  int cyclePosition = getCyclePosition();
 
   //If cycle_pos = 1
   //Calculate TA and TO based on RAM_4, RAM_5, RAM_6, RAM_9
@@ -250,26 +265,38 @@ float MLX90632::end_getObjectTemp(status& returnError){
     readRegister16(RAM_5, (uint16_t&)upperRAM);
   }
 
+	double VRta;
+	double AMB;
+	double VRto;
+	double Sto;
+	double TAdut;
+	double ambientTempK;
+	double bigFraction;
+	double objectTemp;
+
   //Object temp requires 3 iterations
   for (uint8_t i = 0 ; i < 3 ; i++)
   {
-    double VRta = nineRAM + Gb * (sixRAM / 12.0);
+		// ToDo: Optimize this section to reduce CPU load / delay
 
-    double AMB = (sixRAM / 12.0) / VRta * pow(2, 19);
+    VRta = nineRAM + Gb * (sixRAM / 12.0);
 
-    double sensorTemp = P_O + (AMB - P_R) / P_G + P_T * pow((AMB - P_R), 2);
+    AMB = (sixRAM / 12.0) / VRta * pow(2, 19);
+
+		// Removed following because it doens't seem to do anything
+    //double sensorTemp = P_O + (AMB - P_R) / P_G + P_T * pow((AMB - P_R), 2);
 
     float S = (float)(lowerRAM + upperRAM) / 2.0;
-    double VRto = nineRAM + Ka * (sixRAM / 12.0);
-    double Sto = (S / 12.0) / VRto * (double)pow(2, 19);
+    VRto = nineRAM + Ka * (sixRAM / 12.0);
+    Sto = (S / 12.0) / VRto * (double)pow(2, 19);
 
-    double TAdut = (AMB - Eb) / Ea + 25.0;
+    TAdut = (AMB - Eb) / Ea + 25.0;
 
-    double ambientTempK = TAdut + 273.15;
+    ambientTempK = TAdut + 273.15;
 
-    double bigFraction = Sto / (1 * Fa * Ha * (1 + Ga * (TOdut - TO0) + Fb * (TAdut - TA0)));
+    bigFraction = Sto / (1 * Fa * Ha * (1 + Ga * (TOdut - TO0) + Fb * (TAdut - TA0)));
 
-    double objectTemp = bigFraction + pow(ambientTempK, 4);
+    objectTemp = bigFraction + pow(ambientTempK, 4);
     objectTemp = pow(objectTemp, 0.25); //Take 4th root
     objectTemp = objectTemp - 273.15 - Hb;
 
@@ -302,18 +329,43 @@ float MLX90632::end_getObjectTemp(status& returnError){
       _debugPort->print(F(": "));
       _debugPort->println(objectTemp, 7);
     }
-  }
 
+  }
   return (TO0);
 }
 
 //Convert temp to F
-// Broken because of making the call ASYNC
 float MLX90632::getObjectTempF()
 {
-  float tempC = start_getObjectTemp();
-  float tempF = tempC * 9.0/5.0 + 32.0;
-  return(tempF);
+	if (start_getObjectTemp())
+	{
+		float tempC;
+
+		// Add a delay corresponding to refresh rate per the datasheet
+		//delay(1000.f / (float) (_refreshRate == 0 ? 0.5f : _refreshRate));
+
+		MLX90632::status myStatus;
+		myStatus = MLX90632::status::SENSOR_NO_NEW_DATA;
+		while (true)
+		{
+			tempC = end_getObjectTemp(myStatus); //Get the temperature of the object we're looking at in C
+			if (myStatus == MLX90632::status::SENSOR_SUCCESS)
+			{
+				break;
+			}
+			else
+			{
+				delay(1);
+			}
+		}
+
+		float tempF = tempC * 9.0/5.0 + 32.0;
+		return(tempF);
+	}
+	else
+	{
+		return 0.0f;
+	}
 }
 
 //Returns the current temperature of the sensor
@@ -427,6 +479,7 @@ void MLX90632::setBrownOut()
 //Clear the new_data bit. This is done after a measurement is complete
 void MLX90632::clearNewData()
 {
+	// ToDo: Add status check/return
   uint16_t reg = getStatus(); //Get current bits
   reg &= ~(1 << BIT_NEW_DATA); //Clear the bit
   writeRegister16(REG_STATUS, reg); //Set the mode bits
@@ -725,9 +778,15 @@ void MLX90632::setMeasurementRate(uint8_t rate) {
 	}
 	readRegister16(EE_MEAS1, read_meas1);
 	readRegister16(EE_MEAS2, read_meas2);
+
+	// ToDo: Perform check to see whether rate was changed
+	_refreshRate = rate;
+
 	Serial.println("Updated Register contents");
-	Serial.print("EE_MEAS1:");
+	Serial.print("EE_MEAS1: ");
 	Serial.println(read_meas1, HEX);
-	Serial.print("EE_MEAS2:");
+	Serial.print("EE_MEAS2: ");
 	Serial.println(read_meas2, HEX);
+	Serial.print("Refresh Rate: ");
+	Serial.println(_refreshRate);
 }
