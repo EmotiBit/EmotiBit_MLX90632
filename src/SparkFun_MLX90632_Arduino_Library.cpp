@@ -265,6 +265,8 @@ float MLX90632::end_getObjectTemp(status& returnError){
     readRegister16(RAM_5, (uint16_t&)upperRAM);
   }
 
+	clearNewData();
+
 	double VRta;
 	double AMB;
 	double VRto;
