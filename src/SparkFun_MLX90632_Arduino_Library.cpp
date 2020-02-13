@@ -675,6 +675,7 @@ void MLX90632::writeEEPROM(uint16_t addr, uint16_t val)
   uint8_t originalMode = getMode();
 
   // SENSOR HAS TO BE IN step MODE TO WRITE INTO THE EEPROM
+	// ToDo: Consider performing a check on setMode success
   setMode(MODE_STEP);
 
   //Wait for complete
@@ -711,7 +712,8 @@ void MLX90632::writeEEPROM(uint16_t addr, uint16_t val)
 
 void MLX90632::setMeasurementRate(uint8_t rate) {
 	uint16_t read_meas1, read_meas2;
-	setMode(MODE_STEP);
+	MLX90632::status returnError = setMode(MODE_STEP);
+	// ToDo: Consider performing a check on setMode success
 	readRegister16(EE_MEAS1, read_meas1);
 	readRegister16(EE_MEAS2, read_meas2);
 	if (rate == 0) {// for 0.5Hz Sampling
