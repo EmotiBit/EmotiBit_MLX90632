@@ -289,8 +289,10 @@ float MLX90632::end_getObjectTemp(status& returnError){
 	double bigFraction;
 	double objectTemp;
 
+	// *******************    WARNING THIS SHOULD ITERATE 3 TIMES   **************
+	// THIS CODE NEEDS TO BE REFACTORED SO THAT READING AND CALCULATING CAN BE PERFORMED SEPERATELY
   //Object temp requires 3 iterations
-  for (uint8_t i = 0 ; i < 3 ; i++)
+  for (uint8_t i = 0 ; i < 1 ; i++)
   {
 		// ToDo: Optimize this section to reduce CPU load / delay
 
