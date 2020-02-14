@@ -265,6 +265,21 @@ float MLX90632::end_getObjectTemp(status& returnError){
     readRegister16(RAM_5, (uint16_t&)upperRAM);
   }
 
+	clearNewData();
+
+	bool testDummyData = false;
+	if (testDummyData)
+	{
+		// Generate and send dummy data to validate pipes
+		static float testData = 30.f;
+		testData += 0.1f;
+		if (testData > 40.f)
+		{
+			testData = 30.f;
+		}
+		return testData;
+	}
+
 	double VRta;
 	double AMB;
 	double VRto;
@@ -274,8 +289,10 @@ float MLX90632::end_getObjectTemp(status& returnError){
 	double bigFraction;
 	double objectTemp;
 
+	// *******************    WARNING THIS SHOULD ITERATE 3 TIMES   **************
+	// THIS CODE NEEDS TO BE REFACTORED SO THAT READING AND CALCULATING CAN BE PERFORMED SEPERATELY
   //Object temp requires 3 iterations
-  for (uint8_t i = 0 ; i < 3 ; i++)
+  for (uint8_t i = 0 ; i < 1 ; i++)
   {
 		// ToDo: Optimize this section to reduce CPU load / delay
 
@@ -673,6 +690,7 @@ void MLX90632::writeEEPROM(uint16_t addr, uint16_t val)
   uint8_t originalMode = getMode();
 
   // SENSOR HAS TO BE IN step MODE TO WRITE INTO THE EEPROM
+	// ToDo: Consider performing a check on setMode success
   setMode(MODE_STEP);
 
   //Wait for complete
@@ -709,7 +727,8 @@ void MLX90632::writeEEPROM(uint16_t addr, uint16_t val)
 
 void MLX90632::setMeasurementRate(uint8_t rate) {
 	uint16_t read_meas1, read_meas2;
-	setMode(MODE_STEP);
+	MLX90632::status returnError = setMode(MODE_STEP);
+	// ToDo: Consider performing a check on setMode success
 	readRegister16(EE_MEAS1, read_meas1);
 	readRegister16(EE_MEAS2, read_meas2);
 	if (rate == 0) {// for 0.5Hz Sampling
