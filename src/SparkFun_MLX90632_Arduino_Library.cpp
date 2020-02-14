@@ -267,6 +267,19 @@ float MLX90632::end_getObjectTemp(status& returnError){
 
 	clearNewData();
 
+	bool testDummyData = false;
+	if (testDummyData)
+	{
+		// Generate and send dummy data to validate pipes
+		static float testData = 30.f;
+		testData += 0.1f;
+		if (testData > 40.f)
+		{
+			testData = 30.f;
+		}
+		return testData;
+	}
+
 	double VRta;
 	double AMB;
 	double VRto;
