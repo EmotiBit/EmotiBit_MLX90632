@@ -59,16 +59,18 @@ void setup()
 void loop()
 {
 	float objectTemp;
-
-	objectTemp = myTempSensor.start_getObjectTemp(); //start measurement conversion
-
+	float AMB;
+	float Sto;
+	objectTemp = myTempSensor.startConversionObjectTemp(); //start measurement conversion
+	// ToDo: change this to automatically be updated with the set measurement rate
 	delay(150);  // Delay is dependent on the refresh rate set for the sensor on board, see datasheet
 	MLX90632::status myStatus;
 	myStatus = MLX90632::status::SENSOR_NO_NEW_DATA;
 	
 	while (myStatus != MLX90632::status::SENSOR_SUCCESS)
 	{
-		objectTemp = myTempSensor.end_getObjectTemp(myStatus); //Get the temperature of the object we're looking at in C
+		myTempSensor.updateRawObjectTemp(myStatus, AMB, Sto); //Get the temperature of the object we're looking at in C
+		objectTemp = myTempSensor.getProcessedObjectTemp(AMB, Sto);
 	}
 
 	Serial.print("Object temperature: ");

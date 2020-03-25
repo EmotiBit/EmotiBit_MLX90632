@@ -192,12 +192,12 @@ boolean MLX90632::begin(uint8_t deviceAddress, TwoWire &wirePort, status &return
 //Read all calibration values and calculate the temperature of the thing we are looking at
 //Depending on mode, initiates a measurement
 //If in sleep or step mode, clears the new_data bit, sets the SOC bit
-bool MLX90632::start_getObjectTemp()
+bool MLX90632::startConversionObjectTemp()
 {
   MLX90632::status returnError;
-  return (start_getObjectTemp(returnError));
+  return (startConversionObjectTemp(returnError));
 }
-bool MLX90632::start_getObjectTemp(status& returnError)
+bool MLX90632::startConversionObjectTemp(status& returnError)
 {
 	returnError = SENSOR_SUCCESS;
 
@@ -212,12 +212,12 @@ bool MLX90632::start_getObjectTemp(status& returnError)
 	return (returnError == SENSOR_SUCCESS);
 }
 
-float MLX90632::end_getObjectTemp() {
-	MLX90632::status returnError;
-	return (end_getObjectTemp(returnError));
-}
+//float MLX90632::getRawObjectTemp() {
+//	MLX90632::status returnError;
+//	return (getRawObjectTemp(returnError));
+//}
 
-float MLX90632::end_getObjectTemp(status& returnError){
+void MLX90632::updateRawObjectTemp(status& returnError, float &AMB, float &Sto) {
 	// Removed following because it doens't seem to do anything
   //gatherSensorTemp(returnError);
 
@@ -228,42 +228,44 @@ float MLX90632::end_getObjectTemp(status& returnError){
 	if (!newData)
 	{
 		// Don't bother recalculating TO0 if there's no new data
-		returnError = SENSOR_NO_NEW_DATA; 
-		return TO0;
+		returnError = SENSOR_NO_NEW_DATA;
+		// ToDo: think about effect of globalTO0
+		AMB = -1.0f;
+		Sto = -1.0f;
 	}
 
 	//Read cycle_pos to get measurement pointer
 	int cyclePosition = status >> BIT_CYCLE_POS; //Shave off last two bits
 
-  int16_t lowerRAM = 0;
-  int16_t upperRAM = 0;
+	int16_t lowerRAM = 0;
+	int16_t upperRAM = 0;
 
-  //Get RAM_6 and RAM_9
-  int16_t sixRAM;
-  readRegister16(RAM_6, (uint16_t&)sixRAM);
-  int16_t nineRAM;
-  readRegister16(RAM_9, (uint16_t&)nineRAM);
+	//Get RAM_6 and RAM_9
+	int16_t sixRAM;
+	readRegister16(RAM_6, (uint16_t&)sixRAM);
+	int16_t nineRAM;
+	readRegister16(RAM_9, (uint16_t&)nineRAM);
 
-  //If cycle_pos = 1
-  //Calculate TA and TO based on RAM_4, RAM_5, RAM_6, RAM_9
-  if (cyclePosition == 1)
-  {
-    readRegister16(RAM_4, (uint16_t&)lowerRAM);
-    readRegister16(RAM_5, (uint16_t&)upperRAM);
-  }
-  //If cycle_pos = 2
-  //Calculate TA and TO based on RAM_7, RAM_8, RAM_6, RAM_9
-  else if (cyclePosition == 2)
-  {
-    readRegister16(RAM_7, (uint16_t&)lowerRAM);
-    readRegister16(RAM_8, (uint16_t&)upperRAM);
-  }
-  else
-  {
-    if (_printDebug) _debugPort->println(F("Found a cycle position that was not 1 or 2"));
-    readRegister16(RAM_4, (uint16_t&)lowerRAM);
-    readRegister16(RAM_5, (uint16_t&)upperRAM);
-  }
+	//If cycle_pos = 1
+	//Calculate TA and TO based on RAM_4, RAM_5, RAM_6, RAM_9
+	if (cyclePosition == 1)
+	{
+		readRegister16(RAM_4, (uint16_t&)lowerRAM);
+		readRegister16(RAM_5, (uint16_t&)upperRAM);
+	}
+	//If cycle_pos = 2
+	//Calculate TA and TO based on RAM_7, RAM_8, RAM_6, RAM_9
+	else if (cyclePosition == 2)
+	{
+		readRegister16(RAM_7, (uint16_t&)lowerRAM);
+		readRegister16(RAM_8, (uint16_t&)upperRAM);
+	}
+	else
+	{
+		if (_printDebug) _debugPort->println(F("Found a cycle position that was not 1 or 2"));
+		readRegister16(RAM_4, (uint16_t&)lowerRAM);
+		readRegister16(RAM_5, (uint16_t&)upperRAM);
+	}
 
 	clearNewData();
 
@@ -277,13 +279,55 @@ float MLX90632::end_getObjectTemp(status& returnError){
 		{
 			testData = 30.f;
 		}
-		return testData;
+		//return testData;
+		// Find better handling
+		AMB = -2.0f;
+		Sto = -2.0f;
 	}
 
 	double VRta;
-	double AMB;
+	// double AMB;
+
+	VRta = nineRAM + Gb * (sixRAM / 12.0);
+	AMB = (sixRAM / 12.0) / VRta * pow(2, 19); // we need AMB for object temp calculation
+
 	double VRto;
-	double Sto;
+	// double Sto;
+
+	float S = (float)(lowerRAM + upperRAM) / 2.0;
+	VRto = nineRAM + Ka * (sixRAM / 12.0);
+	Sto = (S / 12.0) / VRto * (double)pow(2, 19); // we need Sto for Object temp calculation
+
+	if (_printDebug)
+	{
+		_debugPort->println();
+		_debugPort->print(F("VRta: "));
+		_debugPort->println(VRta);
+		_debugPort->print(F("AMB: "));
+		_debugPort->println(AMB, 10);
+		_debugPort->print(F("VRto: "));
+		_debugPort->println(VRto);
+		_debugPort->print(F("Sto: "));
+		_debugPort->println(Sto);
+		_debugPort->print(F("S: "));
+		_debugPort->println(S);
+	}
+}
+
+
+float MLX90632::getProcessedObjectTemp(float AMB, float Sto)
+{	
+	if (AMB == -2.0f && Sto == -2.0f) //  Sign of Dummy data
+	{
+		// Generate and send dummy data to validate pipes
+		static float testData = 30.f;
+		testData += 0.1f;
+		if (testData > 40.f)
+		{
+			testData = 30.f;
+		}
+		return testData;
+	}
 	double TAdut;
 	double ambientTempK;
 	double bigFraction;
@@ -292,20 +336,14 @@ float MLX90632::end_getObjectTemp(status& returnError){
 	// *******************    WARNING THIS SHOULD ITERATE 3 TIMES   **************
 	// THIS CODE NEEDS TO BE REFACTORED SO THAT READING AND CALCULATING CAN BE PERFORMED SEPERATELY
   //Object temp requires 3 iterations
-  for (uint8_t i = 0 ; i < 1 ; i++)
+  //Updated Loop iterations to 3 times
+  for (uint8_t i = 0 ; i < 3 ; i++)
   {
 		// ToDo: Optimize this section to reduce CPU load / delay
-
-    VRta = nineRAM + Gb * (sixRAM / 12.0);
-
-    AMB = (sixRAM / 12.0) / VRta * pow(2, 19);
 
 		// Removed following because it doens't seem to do anything
     //double sensorTemp = P_O + (AMB - P_R) / P_G + P_T * pow((AMB - P_R), 2);
 
-    float S = (float)(lowerRAM + upperRAM) / 2.0;
-    VRto = nineRAM + Ka * (sixRAM / 12.0);
-    Sto = (S / 12.0) / VRto * (double)pow(2, 19);
 
     TAdut = (AMB - Eb) / Ea + 25.0;
 
@@ -321,19 +359,8 @@ float MLX90632::end_getObjectTemp(status& returnError){
 
     if (_printDebug)
     {
-      _debugPort->println();
-      _debugPort->print(F("VRta: "));
-      _debugPort->println(VRta);
-      _debugPort->print(F("AMB: "));
-      _debugPort->println(AMB, 10);
       _debugPort->print(F("sensorTemp (Ta): "));
       _debugPort->println(sensorTemp, 4);
-      _debugPort->print(F("S: "));
-      _debugPort->println(S);
-      _debugPort->print(F("VRto: "));
-      _debugPort->println(VRto);
-      _debugPort->print(F("Sto: "));
-      _debugPort->println(Sto);
       _debugPort->print(F("TAdut: "));
       _debugPort->println(TAdut, 10);
       _debugPort->print(F("ambientTempK: "));
@@ -354,9 +381,11 @@ float MLX90632::end_getObjectTemp(status& returnError){
 //Convert temp to F
 float MLX90632::getObjectTempF()
 {
-	if (start_getObjectTemp())
+	if (startConversionObjectTemp())
 	{
 		float tempC;
+		float AMB;
+		float Sto;
 
 		// Add a delay corresponding to refresh rate per the datasheet
 		//delay(1000.f / (float) (_refreshRate == 0 ? 0.5f : _refreshRate));
@@ -365,7 +394,8 @@ float MLX90632::getObjectTempF()
 		myStatus = MLX90632::status::SENSOR_NO_NEW_DATA;
 		while (true)
 		{
-			tempC = end_getObjectTemp(myStatus); //Get the temperature of the object we're looking at in C
+			updateRawObjectTemp(myStatus, AMB, Sto); //Get the temperature of the object we're looking at in C
+			tempC = getProcessedObjectTemp(AMB, Sto);
 			if (myStatus == MLX90632::status::SENSOR_SUCCESS)
 			{
 				break;
