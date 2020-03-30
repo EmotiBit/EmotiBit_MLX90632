@@ -143,7 +143,7 @@ class MLX90632 {
     bool startConversionObjectTemp();
     bool startConversionObjectTemp(status &returnError);
 	//float getRawObjectTemp();
-	void updateRawObjectTemp(status &returnError, float &AMB, float &Sto);
+	void getRawObjectTemp(status &returnError, float &AMB, float &Sto);
 	float getProcessedObjectTemp(float AMb, float Sto);
 	float getObjectTempF();
     float getSensorTemp();
@@ -177,5 +177,6 @@ class MLX90632 {
 
     Stream *_debugPort; //The stream to send debug messages to if enabled
     boolean _printDebug = false; //Flag to print debugging variables
+	float _lastObjectTemp;
 
 };

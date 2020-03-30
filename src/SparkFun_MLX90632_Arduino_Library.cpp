@@ -60,6 +60,7 @@ boolean MLX90632::begin()
 {
   uint8_t deviceAddress = MLX90632_DEFAULT_ADDRESS;
   TwoWire &wirePort = Wire;
+  _lastObjectTemp = 25.0; 
   MLX90632::status returnError;
   if (begin(deviceAddress, wirePort, returnError) == true)
     return (true);
@@ -217,7 +218,7 @@ bool MLX90632::startConversionObjectTemp(status& returnError)
 //	return (getRawObjectTemp(returnError));
 //}
 
-void MLX90632::updateRawObjectTemp(status& returnError, float &AMB, float &Sto) {
+void MLX90632::getRawObjectTemp(status& returnError, float &AMB, float &Sto) {
 	// Removed following because it doens't seem to do anything
   //gatherSensorTemp(returnError);
 
@@ -230,8 +231,13 @@ void MLX90632::updateRawObjectTemp(status& returnError, float &AMB, float &Sto) 
 		// Don't bother recalculating TO0 if there's no new data
 		returnError = SENSOR_NO_NEW_DATA;
 		// ToDo: think about effect of globalTO0
-		AMB = -1.0f;
-		Sto = -1.0f;
+		if (_printDebug)
+		{
+			_debugPort->println("accessed too early:getRaw");
+		}
+		AMB = -1.0;
+		Sto = -1.0;
+		return;
 	}
 
 	//Read cycle_pos to get measurement pointer
@@ -269,21 +275,23 @@ void MLX90632::updateRawObjectTemp(status& returnError, float &AMB, float &Sto) 
 
 	clearNewData();
 
-	bool testDummyData = false;
-	if (testDummyData)
-	{
-		// Generate and send dummy data to validate pipes
-		static float testData = 30.f;
-		testData += 0.1f;
-		if (testData > 40.f)
-		{
-			testData = 30.f;
-		}
-		//return testData;
-		// Find better handling
-		AMB = -2.0f;
-		Sto = -2.0f;
-	}
+	//bool testDummyData = false;
+	//if (testDummyData)
+	//{
+	//	// Generate and send dummy data to validate pipes
+	//	static float testData = 30.f;
+	//	testData += 0.1f;
+	//	if (testData > 40.f)
+	//	{
+	//		testData = 30.f;
+	//	}
+	//	//return testData;
+	//	// Find better handling
+	//	AMB = -2.0;
+	//	Sto = -2.0;
+	//	returnError = SENSOR_SUCCESS;
+	//	return;
+	//}
 
 	double VRta;
 	// double AMB;
@@ -312,21 +320,19 @@ void MLX90632::updateRawObjectTemp(status& returnError, float &AMB, float &Sto) 
 		_debugPort->print(F("S: "));
 		_debugPort->println(S);
 	}
+	returnError = SENSOR_SUCCESS;
 }
 
 
 float MLX90632::getProcessedObjectTemp(float AMB, float Sto)
 {	
-	if (AMB == -2.0f && Sto == -2.0f) //  Sign of Dummy data
+	if (AMB == -1.0 && Sto == -1.0)
 	{
-		// Generate and send dummy data to validate pipes
-		static float testData = 30.f;
-		testData += 0.1f;
-		if (testData > 40.f)
+		if (_printDebug)
 		{
-			testData = 30.f;
+			_debugPort->println("accessed too early:processeed");
 		}
-		return testData;
+		return _lastObjectTemp;
 	}
 	double TAdut;
 	double ambientTempK;
@@ -356,6 +362,7 @@ float MLX90632::getProcessedObjectTemp(float AMB, float Sto)
     objectTemp = objectTemp - 273.15 - Hb;
 
     TO0 = objectTemp;
+	_lastObjectTemp = TO0;
 
     if (_printDebug)
     {
@@ -394,7 +401,7 @@ float MLX90632::getObjectTempF()
 		myStatus = MLX90632::status::SENSOR_NO_NEW_DATA;
 		while (true)
 		{
-			updateRawObjectTemp(myStatus, AMB, Sto); //Get the temperature of the object we're looking at in C
+			getRawObjectTemp(myStatus, AMB, Sto); //Get the temperature of the object we're looking at in C
 			tempC = getProcessedObjectTemp(AMB, Sto);
 			if (myStatus == MLX90632::status::SENSOR_SUCCESS)
 			{

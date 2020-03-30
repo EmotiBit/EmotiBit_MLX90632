@@ -31,7 +31,7 @@ void setup()
 	//  myTempSensor.enableDebugging(Serial);
 	MLX90632::status myStatus;
 	myTempSensor.begin(address, myWire, myStatus);
-
+	//myTempSensor.enableDebugging();
 	if (myStatus != MLX90632::status::SENSOR_SUCCESS)
 	{
 		Serial.println("MLX90632 communication failed");
@@ -63,17 +63,21 @@ void loop()
 	float Sto;
 	objectTemp = myTempSensor.startConversionObjectTemp(); //start measurement conversion
 	// ToDo: change this to automatically be updated with the set measurement rate
-	delay(150);  // Delay is dependent on the refresh rate set for the sensor on board, see datasheet
+	//delay(150);  // Delay is dependent on the refresh rate set for the sensor on board, see datasheet
 	MLX90632::status myStatus;
 	myStatus = MLX90632::status::SENSOR_NO_NEW_DATA;
 	
 	while (myStatus != MLX90632::status::SENSOR_SUCCESS)
 	{
-		myTempSensor.updateRawObjectTemp(myStatus, AMB, Sto); //Get the temperature of the object we're looking at in C
+		myTempSensor.getRawObjectTemp(myStatus, AMB, Sto); //Get the temperature of the object we're looking at in C
 		objectTemp = myTempSensor.getProcessedObjectTemp(AMB, Sto);
 	}
-
+	Serial.print("AMB:");
+	Serial.println(AMB);
+	Serial.print("Sto:");
+	Serial.println(Sto);
 	Serial.print("Object temperature: ");
 	Serial.print(objectTemp, 2);
 	Serial.println(" C");
+
 }
