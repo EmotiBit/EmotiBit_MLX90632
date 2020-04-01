@@ -143,8 +143,8 @@ class MLX90632 {
     bool startConversionObjectTemp();
     bool startConversionObjectTemp(status &returnError);
 	//float getRawObjectTemp();
-	void getRawObjectTemp(status &returnError, float &AMB, float &Sto);
-	float getProcessedObjectTemp(float AMb, float Sto);
+	void getRawSensorValues(status &returnError, float &AMB, float &Sto);
+	float getObjectTemp(float AMb, float Sto);
 	float getObjectTempF();
     float getSensorTemp();
     float getSensorTemp(status &returnError);

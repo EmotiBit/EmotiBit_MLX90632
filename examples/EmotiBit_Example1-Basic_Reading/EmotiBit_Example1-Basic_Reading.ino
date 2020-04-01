@@ -69,8 +69,8 @@ void loop()
 	
 	while (myStatus != MLX90632::status::SENSOR_SUCCESS)
 	{
-		myTempSensor.getRawObjectTemp(myStatus, AMB, Sto); //Get the temperature of the object we're looking at in C
-		objectTemp = myTempSensor.getProcessedObjectTemp(AMB, Sto);
+		myTempSensor.getRawSensorValues(myStatus, AMB, Sto); //Get the temperature of the object we're looking at in C
+		objectTemp = myTempSensor.getObjectTemp(AMB, Sto);
 	}
 	Serial.print("AMB:");
 	Serial.println(AMB);

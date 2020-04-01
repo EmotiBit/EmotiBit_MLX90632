@@ -218,7 +218,7 @@ bool MLX90632::startConversionObjectTemp(status& returnError)
 //	return (getRawObjectTemp(returnError));
 //}
 
-void MLX90632::getRawObjectTemp(status& returnError, float &AMB, float &Sto) {
+void MLX90632::getRawSensorValues(status& returnError, float &AMB, float &Sto) {
 	// Removed following because it doens't seem to do anything
   //gatherSensorTemp(returnError);
 
@@ -324,7 +324,7 @@ void MLX90632::getRawObjectTemp(status& returnError, float &AMB, float &Sto) {
 }
 
 
-float MLX90632::getProcessedObjectTemp(float AMB, float Sto)
+float MLX90632::getObjectTemp(float AMB, float Sto)
 {	
 	if (AMB == -1.0 && Sto == -1.0)
 	{
@@ -401,8 +401,8 @@ float MLX90632::getObjectTempF()
 		myStatus = MLX90632::status::SENSOR_NO_NEW_DATA;
 		while (true)
 		{
-			getRawObjectTemp(myStatus, AMB, Sto); //Get the temperature of the object we're looking at in C
-			tempC = getProcessedObjectTemp(AMB, Sto);
+			getRawSensorValues(myStatus, AMB, Sto); //Get the temperature of the object we're looking at in C
+			tempC = getObjectTemp(AMB, Sto);
 			if (myStatus == MLX90632::status::SENSOR_SUCCESS)
 			{
 				break;
