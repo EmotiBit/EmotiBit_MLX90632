@@ -143,6 +143,8 @@ class MLX90632 {
     bool startRawSensorValues(status &returnError);
 	//float getRawObjectTemp();
 	void getRawSensorValues(status &returnError, float &AMB, float &Sto);
+	float getObjectTemp();
+	float getObjectTemp(MLX90632::status &returnError);
 	float getObjectTemp(float AMb, float Sto);
 	float getObjectTempF();
     float getSensorTemp();

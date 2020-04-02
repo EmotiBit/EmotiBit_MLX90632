@@ -209,10 +209,6 @@ bool MLX90632::startRawSensorValues(status& returnError)
 	return (returnError == SENSOR_SUCCESS);
 }
 
-//float MLX90632::getRawObjectTemp() {
-//	MLX90632::status returnError;
-//	return (getRawObjectTemp(returnError));
-//}
 
 void MLX90632::getRawSensorValues(status& returnError, float &AMB, float &Sto) {
 	// Removed following because it doens't seem to do anything
@@ -381,6 +377,35 @@ float MLX90632::getObjectTemp(float AMB, float Sto)
   return (TO0);
 }
 
+
+float MLX90632::getObjectTemp()
+{
+	status returnError;
+	return getObjectTemp(returnError);
+}
+
+float MLX90632::getObjectTemp(MLX90632::status &returnError)
+{
+	float AMB, Sto;
+	float objectTemp;
+
+	bool statusStart = false;
+	while (!statusStart)
+	{
+		statusStart = startRawSensorValues(returnError); //start measurement conversion
+	}
+
+	returnError = MLX90632::status::SENSOR_NO_NEW_DATA;
+
+	while (returnError != MLX90632::status::SENSOR_SUCCESS)
+	{
+		getRawSensorValues(returnError, AMB, Sto);
+	}
+	objectTemp = getObjectTemp(AMB, Sto);
+	return objectTemp;
+}
+
+
 //Convert temp to F
 float MLX90632::getObjectTempF()
 {
@@ -391,24 +416,7 @@ float MLX90632::getObjectTempF()
 		float AMB;
 		float Sto;
 
-		// Add a delay corresponding to refresh rate per the datasheet
-		//delay(1000.f / (float) (_refreshRate == 0 ? 0.5f : _refreshRate));
-
-		MLX90632::status myStatus;
-		myStatus = MLX90632::status::SENSOR_NO_NEW_DATA;
-		while (true)
-		{
-			getRawSensorValues(myStatus, AMB, Sto); //Get the temperature of the object we're looking at in C
-			tempC = getObjectTemp(AMB, Sto);
-			if (myStatus == MLX90632::status::SENSOR_SUCCESS)
-			{
-				break;
-			}
-			else
-			{
-				delay(1);
-			}
-		}
+		tempC = getObjectTemp();
 
 		float tempF = tempC * 9.0/5.0 + 32.0;
 		return(tempF);
