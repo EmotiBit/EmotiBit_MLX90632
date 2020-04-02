@@ -193,12 +193,8 @@ boolean MLX90632::begin(uint8_t deviceAddress, TwoWire &wirePort, status &return
 //Read all calibration values and calculate the temperature of the thing we are looking at
 //Depending on mode, initiates a measurement
 //If in sleep or step mode, clears the new_data bit, sets the SOC bit
-bool MLX90632::startConversionObjectTemp()
-{
-  MLX90632::status returnError;
-  return (startConversionObjectTemp(returnError));
-}
-bool MLX90632::startConversionObjectTemp(status& returnError)
+
+bool MLX90632::startRawSensorValues(status& returnError)
 {
 	returnError = SENSOR_SUCCESS;
 
@@ -388,7 +384,8 @@ float MLX90632::getObjectTemp(float AMB, float Sto)
 //Convert temp to F
 float MLX90632::getObjectTempF()
 {
-	if (startConversionObjectTemp())
+	status myStatus;
+	if (startRawSensorValues(myStatus))
 	{
 		float tempC;
 		float AMB;

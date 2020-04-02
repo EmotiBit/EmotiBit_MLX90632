@@ -61,10 +61,8 @@ void loop()
 	float objectTemp;
 	float AMB;
 	float Sto;
-	objectTemp = myTempSensor.startConversionObjectTemp(); //start measurement conversion
-	// ToDo: change this to automatically be updated with the set measurement rate
-	//delay(150);  // Delay is dependent on the refresh rate set for the sensor on board, see datasheet
 	MLX90632::status myStatus;
+	objectTemp = myTempSensor.startRawSensorValues(myStatus); //start measurement conversion
 	myStatus = MLX90632::status::SENSOR_NO_NEW_DATA;
 	
 	while (myStatus != MLX90632::status::SENSOR_SUCCESS)
