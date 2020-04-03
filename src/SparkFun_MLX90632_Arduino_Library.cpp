@@ -354,7 +354,6 @@ float MLX90632::getObjectTemp(float AMB, float Sto)
     objectTemp = objectTemp - 273.15 - Hb;
 
     TO0 = objectTemp;
-	_lastObjectTemp = TO0;
 
     if (_printDebug)
     {
@@ -373,6 +372,14 @@ float MLX90632::getObjectTemp(float AMB, float Sto)
       _debugPort->println(objectTemp, 7);
     }
 
+  }
+  if (!isnan(TO0))
+  {
+	  _lastObjectTemp = TO0;
+  }
+  else
+  {
+	  TO0 = _lastObjectTemp;
   }
   return (TO0);
 }
