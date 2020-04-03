@@ -347,7 +347,7 @@ float MLX90632::getObjectTemp(float AMB, float Sto)
 
     ambientTempK = TAdut + 273.15;
 
-    bigFraction = Sto / (1 * Fa * Ha * (1 + Ga * (TOdut - TO0) + Fb * (TAdut - TA0)));
+    bigFraction = Sto / (1 * Fa * Ha * (1 + Ga * (TOdut - _lastObjectTemp) + Fb * (TAdut - TA0)));
 
     objectTemp = bigFraction + pow(ambientTempK, 4);
     objectTemp = pow(objectTemp, 0.25); //Take 4th root
@@ -376,10 +376,6 @@ float MLX90632::getObjectTemp(float AMB, float Sto)
   if (!isnan(TO0))
   {
 	  _lastObjectTemp = TO0;
-  }
-  else
-  {
-	  TO0 = _lastObjectTemp;
   }
   return (TO0);
 }
