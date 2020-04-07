@@ -26,12 +26,12 @@ void setup()
 	myWire.begin();
 	pinPeripheral(11, PIO_SERCOM);
 	pinPeripheral(13, PIO_SERCOM);
-	myWire.setClock(1000000);
+	myWire.setClock(400000);
 
 	//  myTempSensor.enableDebugging(Serial);
 	MLX90632::status myStatus;
 	myTempSensor.begin(address, myWire, myStatus);
-
+	//myTempSensor.enableDebugging();
 	if (myStatus != MLX90632::status::SENSOR_SUCCESS)
 	{
 		Serial.println("MLX90632 communication failed");
@@ -47,31 +47,23 @@ void setup()
 	Serial.print("Value stored in EE_MEAS2: 0x");
 	Serial.println(valueInMemory, HEX);
 
-	// setup digital outputs to visualize loop timing
-	//pinMode(14, OUTPUT);
-	//digitalWrite(14, LOW);
-	//pinMode(16, OUTPUT);
-	//digitalWrite(16, LOW);
-	//pinMode(10, OUTPUT);
-	//digitalWrite(10, LOW);
 }
 
 void loop()
 {
 	float objectTemp;
 
-	objectTemp = myTempSensor.start_getObjectTemp(); //start measurement conversion
-
-	delay(150);  // Delay is dependent on the refresh rate set for the sensor on board, see datasheet
-	MLX90632::status myStatus;
-	myStatus = MLX90632::status::SENSOR_NO_NEW_DATA;
-	
-	while (myStatus != MLX90632::status::SENSOR_SUCCESS)
-	{
-		objectTemp = myTempSensor.end_getObjectTemp(myStatus); //Get the temperature of the object we're looking at in C
-	}
-
+	//For the world
+	objectTemp = myTempSensor.getObjectTemp(); //Get the temperature of the object we're looking at in C
 	Serial.print("Object temperature: ");
 	Serial.print(objectTemp, 2);
-	Serial.println(" C");
+	Serial.print(" C");
+
+	//For us silly people that use Fahrenheit
+	/*objectTemp = myTempSensor.getObjectTempF(); //Get the temperature of the object we're looking at in F
+	Serial.print("Object temperature: ");
+	Serial.print(objectTemp, 2);
+	Serial.print(" F");*/
+
+	Serial.println();
 }
